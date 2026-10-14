@@ -1,0 +1,12 @@
+# VisionPriority AI — perception module (Detect + Track)
+# Install PyTorch first for your machine (GPU build from https://pytorch.org if you have an NVIDIA GPU).
+ultralytics>=8.3.0      # YOLO11 + ByteTrack implementation (tested on 8.4.175)
+opencv-python>=4.8
+numpy>=1.24
+lap>=0.5.12             # linear assignment used by ByteTrack
+motmetrics>=1.4.0       # only for scripts/eval_mot17.py
+pandas                  # used by motmetrics
+pytest                  # optional, for tests/
+
+streamlit>=1.35
+pandas>=2.0

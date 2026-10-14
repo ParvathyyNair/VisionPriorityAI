@@ -1,0 +1,94 @@
+{
+  "scene": "scene01",
+  "videos": {
+    "CAM_FRONT": "scene01_CAM_FRONT.mp4",
+    "CAM_BACK": "scene01_CAM_BACK.mp4",
+    "CAM_FRONT_LEFT": "scene01_CAM_FRONT_LEFT.mp4",
+    "CAM_FRONT_RIGHT": "scene01_CAM_FRONT_RIGHT.mp4"
+  },
+  "frame_counts_per_view": {
+    "CAM_FRONT": 229,
+    "CAM_BACK": 229,
+    "CAM_FRONT_LEFT": 231,
+    "CAM_FRONT_RIGHT": 233
+  },
+  "sync_mode": "proportional",
+  "sync_warnings": [
+    "Views have different frame counts {'CAM_FRONT': 229, 'CAM_BACK': 229, 'CAM_FRONT_LEFT': 231, 'CAM_FRONT_RIGHT': 233} and no timestamps; using proportional alignment (approximate)."
+  ],
+  "n_batches": 229,
+  "config": {
+    "views": [
+      "CAM_FRONT",
+      "CAM_BACK",
+      "CAM_FRONT_LEFT",
+      "CAM_FRONT_RIGHT"
+    ],
+    "fps": 12.0,
+    "detector": {
+      "weights": "/home/claude/vp/weights/yolo11s.pt",
+      "imgsz": 640,
+      "conf": 0.1,
+      "iou": 0.7,
+      "device": null,
+      "half": false,
+      "classes": [
+        0,
+        1,
+        2,
+        3,
+        5,
+        6,
+        7,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21
+      ]
+    },
+    "tracker": {
+      "track_high_thresh": 0.25,
+      "track_low_thresh": 0.1,
+      "new_track_thresh": 0.25,
+      "track_buffer": 30,
+      "match_thresh": 0.8,
+      "fuse_score": true,
+      "min_hits_to_emit": 1,
+      "history_len": 30,
+      "class_vote": true
+    }
+  },
+  "latency_ms": {
+    "device": "cpu",
+    "detect_4views_median": 601.6,
+    "detect_4views_p95": 755.3,
+    "detect_per_view_median": 150.4,
+    "total_median": 609.4,
+    "track_median": 7.8
+  },
+  "tracks": {
+    "unique_ids": 377,
+    "by_view": {
+      "CAM_FRONT": 142,
+      "CAM_BACK": 76,
+      "CAM_FRONT_LEFT": 77,
+      "CAM_FRONT_RIGHT": 82
+    },
+    "by_class": {
+      "car": 204,
+      "person": 137,
+      "bicycle": 27,
+      "truck": 7,
+      "motorcycle": 2
+    },
+    "mean_active_per_frame": 28.65,
+    "median_track_length_frames": 8.0,
+    "tracks_longer_than_1s": 150,
+    "single_frame_tracks": 53
+  },
+  "contract_validation_errors": 0,
+  "contract_error_examples": []
+}
