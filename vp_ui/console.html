@@ -3,10 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
+/*__FONTS__*/
 :root {
   --bg: #070b0f; --surface: #0d1319; --surface2: #131b23; --line: #22303b;
   --ink: #e3ebf0; --mute: #8497a5; --accent: #4fd1e8;
@@ -196,7 +194,7 @@ button { font: inherit; color: inherit; }
     </div></section>
 
     <section class="panel"><div class="in">
-      <div class="ph"><h3>Surround threat map</h3><span class="sub">Top-down, vehicle heading up</span></div>
+      <div class="ph"><h3>Surround threat map</h3><span class="sub" id="radarSub">Top-down, vehicle heading up</span></div>
       <div class="radar-wrap">
         <svg id="radar" viewBox="0 0 380 300" role="img" aria-label="Threat level by direction"></svg>
         <div class="fac" id="fac"></div>
@@ -217,7 +215,10 @@ const STATIC_NAME = window.__VP_STATIC__;
 const VIDEO_URI = window.__VP_VIDEO__;
 
 const frames = P.frames, N = P.n, FPS = P.fps, DUR = N / FPS;
-const VIEW_LABEL = { CAM_FRONT: "Front", CAM_BACK: "Rear", CAM_FRONT_LEFT: "Front-left", CAM_FRONT_RIGHT: "Front-right" };
+const VIEW_LABEL = { CAM_FRONT: "Front", CAM_BACK: "Rear", CAM_FRONT_LEFT: "Front-left", CAM_FRONT_RIGHT: "Front-right",
+                     CAM_BACK_LEFT: "Rear-left", CAM_BACK_RIGHT: "Rear-right" };
+const VEH = P.vehicle || { key: "car", name: "Car / SUV", shape: "car", heavy: false, length_m: 4.5,
+                           cameras: ["CAM_FRONT", "CAM_FRONT_LEFT", "CAM_FRONT_RIGHT", "CAM_BACK"] };
 const LVL_NAME = ["Low", "Caution", "Critical"];
 const HOLD = 5; // frames of hysteresis so the banner does not flicker (~0.4 s at 12 fps)
 const $ = (id) => document.getElementById(id);
@@ -244,7 +245,7 @@ if (VIDEO_URI) {
 }
 vid.addEventListener("error", () => {
   const m = $("vmsg");
-  m.textContent = "The annotated video could not be loaded. Check that results/nuscenes/" + P.scene + "/surround_tracks.mp4 exists and is H.264.";
+  m.textContent = "The annotated video could not be loaded. Check that results/nuscenes/" + P.scene + "/" + (SECT.length === 6 ? "surround6_tracks.mp4" : "surround_tracks.mp4") + " exists and is H.264.";
   m.classList.add("on");
 });
 
@@ -280,17 +281,38 @@ function beep() {
 
 /* ---------- radar ---------- */
 const CX = 190, CY = 150, R1 = 58, R2 = 108;
-const SECT = [
+// Four sectors for a car; heavy vehicles add the rear-left / rear-right flank cameras.
+const SECT4 = [
   { key: "CAM_FRONT", label: "Front", a0: -32, a1: 32, la: 0 },
   { key: "CAM_FRONT_RIGHT", label: "Front-right", a0: 36, a1: 112, la: 74 },
   { key: "CAM_BACK", label: "Rear", a0: 148, a1: 212, la: 180 },
   { key: "CAM_FRONT_LEFT", label: "Front-left", a0: -112, a1: -36, la: -74 },
 ];
+const SECT6 = [
+  { key: "CAM_FRONT", label: "Front", a0: -28, a1: 28, la: 0 },
+  { key: "CAM_FRONT_RIGHT", label: "Front-right", a0: 32, a1: 88, la: 60 },
+  { key: "CAM_BACK_RIGHT", label: "Rear-right", a0: 92, a1: 148, la: 120 },
+  { key: "CAM_BACK", label: "Rear", a0: 152, a1: 208, la: 180 },
+  { key: "CAM_BACK_LEFT", label: "Rear-left", a0: -148, a1: -92, la: -120 },
+  { key: "CAM_FRONT_LEFT", label: "Front-left", a0: -88, a1: -32, la: -60 },
+];
+const SECT = VEH.cameras.includes("CAM_BACK_LEFT") ? SECT6 : SECT4;
 const pol = (r, a) => { const t = (a - 90) * Math.PI / 180; return [CX + r * Math.cos(t), CY + r * Math.sin(t)]; };
 function wedge(a0, a1) {
   const [x1, y1] = pol(R2, a0), [x2, y2] = pol(R2, a1), [x3, y3] = pol(R1, a1), [x4, y4] = pol(R1, a0);
   const big = (a1 - a0) > 180 ? 1 : 0;
   return `M${x1},${y1} A${R2},${R2} 0 ${big} 1 ${x2},${y2} L${x3},${y3} A${R1},${R1} 0 ${big} 0 ${x4},${y4} Z`;
+}
+// Top-down silhouettes, heading up; heavy vehicles are drawn longer (still inside the inner ring).
+function vehicleShape(shape) {
+  const body = 'fill="var(--surface2)" stroke="var(--ink)" stroke-width="1.5"', glass = 'fill="var(--line)"';
+  if (shape === "truck") return `<rect x="-15" y="-52" width="30" height="20" rx="4" ${body}/><rect x="-11" y="-49" width="22" height="7" ${glass}/>
+      <rect x="-17" y="-29" width="34" height="82" rx="2" ${body}/><line x1="-17" y1="-2" x2="17" y2="-2" stroke="var(--line)"/><line x1="-17" y1="25" x2="17" y2="25" stroke="var(--line)"/>`;
+  if (shape === "bus") return `<rect x="-16" y="-52" width="32" height="104" rx="6" ${body}/><rect x="-12" y="-48" width="24" height="9" ${glass}/>
+      ${[-30, -16, -2, 12, 26].map((y) => `<rect x="-14" y="${y}" width="4" height="9" ${glass}/><rect x="10" y="${y}" width="4" height="9" ${glass}/>`).join("")}`;
+  if (shape === "van") return `<rect x="-17" y="-44" width="34" height="88" rx="7" ${body}/><rect x="-12" y="-38" width="24" height="10" ${glass}/>`;
+  return `<path d="M-17,-34 Q0,-46 17,-34 L19,28 Q19,38 9,38 L-9,38 Q-19,38 -19,28 Z" ${body}/>
+        <path d="M-12,-22 Q0,-30 12,-22 L11,-8 L-11,-8 Z" ${glass}/><path d="M-11,18 L11,18 L10,28 L-10,28 Z" ${glass}/>`;
 }
 (function buildRadar() {
   let s = "";
@@ -301,13 +323,17 @@ function wedge(a0, a1) {
     let lx, ly, anchor;
     if (c.key === "CAM_FRONT") { lx = CX; ly = CY - R2 - 26; anchor = "middle"; }
     else if (c.key === "CAM_BACK") { lx = CX; ly = CY + R2 + 22; anchor = "middle"; }
-    else if (c.key === "CAM_FRONT_RIGHT") { lx = CX + R2 + 12; ly = CY - 34; anchor = "start"; }
-    else { lx = CX - R2 - 12; ly = CY - 34; anchor = "end"; }
+    else if (SECT === SECT4 && c.key === "CAM_FRONT_RIGHT") { lx = CX + R2 + 12; ly = CY - 34; anchor = "start"; }
+    else if (SECT === SECT4) { lx = CX - R2 - 12; ly = CY - 34; anchor = "end"; }
+    else {                                   // six-camera layout: labels beside each flank sector
+      const right = c.la > 0, rear = Math.abs(c.la) > 90;
+      lx = right ? CX + R2 + 8 : CX - R2 - 8; ly = rear ? CY + 52 : CY - 58; anchor = right ? "start" : "end";
+    }
     s += `<text x="${lx}" y="${ly}" text-anchor="${anchor}" fill="var(--mute)" font-size="11.5" font-family="var(--body)">${c.label}</text>`;
     s += `<text id="sv_${c.key}" x="${lx}" y="${ly + 16}" text-anchor="${anchor}" fill="var(--ink)" font-size="15" font-weight="600" font-family="var(--display)">--</text>`;
   });
-  s += `<g transform="translate(${CX},${CY})"><path d="M-17,-34 Q0,-46 17,-34 L19,28 Q19,38 9,38 L-9,38 Q-19,38 -19,28 Z" fill="var(--surface2)" stroke="var(--ink)" stroke-width="1.5"/>
-        <path d="M-12,-22 Q0,-30 12,-22 L11,-8 L-11,-8 Z" fill="var(--line)"/><path d="M-11,18 L11,18 L10,28 L-10,28 Z" fill="var(--line)"/></g>`;
+  s += `<g transform="translate(${CX},${CY})">${vehicleShape(VEH.shape)}</g>`;
+  if (VEH.heavy) s += `<text x="${CX}" y="${CY + 4}" text-anchor="middle" fill="var(--mute)" font-size="9" font-family="var(--display)" transform="rotate(-90 ${CX} ${CY})">${VEH.length_m} m</text>`;
   $("radar").innerHTML = s;
   $("fac").innerHTML = ["C|Class", "Z|Zone", "A|Approach", "D|Direction", "P|Persistence"].map((x) => {
     const [k, n] = x.split("|");
@@ -461,6 +487,7 @@ if (vid.requestVideoFrameCallback) {
   requestAnimationFrame(tick);
 }
 ["seeked", "seeking", "timeupdate", "pause", "loadeddata"].forEach((ev) => vid.addEventListener(ev, () => onTime(vid.currentTime)));
+$("radarSub").textContent = `${VEH.name} · ${SECT.length} cameras · heading up`;
 applyMode(readMode());
 setInterval(() => { const m = readMode(); if (m !== mode) applyMode(m); }, 350);
 render(0, true);

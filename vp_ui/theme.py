@@ -5,6 +5,8 @@ document, so flipping the sidebar switch re-themes both without reloading the vi
 """
 from __future__ import annotations
 
+from .fonts import font_face_css
+
 TOKENS = {
     "dark": dict(bg="#070b0f", surface="#0d1319", surface2="#131b23", line="#22303b", ink="#e3ebf0",
                  mute="#8497a5", accent="#4fd1e8", ok="#3dcb8c", warn="#f2a93b", crit="#ff5a52",
@@ -24,7 +26,7 @@ def shell_css(mode: str) -> str:
     t = TOKENS["light" if mode == "light" else "dark"]
     return f"""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&display=swap');
+{font_face_css()}
 :root {{
   --vp-mode: {mode};
   --bg:{t['bg']}; --surface:{t['surface']}; --surface2:{t['surface2']}; --line:{t['line']};
@@ -94,7 +96,17 @@ h3 {{ font-size: 1.05rem !important; font-weight: 600 !important; }}
 .vp-kv span {{ color: var(--mute); }} .vp-kv b {{ font: 600 .85rem var(--display); color: var(--ink); text-align: right; }}
 
 /* readout tiles */
-.vp-tiles {{ display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: .2rem 0 1rem; }}
+.vp-side-h {{ font: 600 .8rem var(--display); letter-spacing: .08em; text-transform: uppercase; color: var(--mute); margin: .1rem 0 .3rem; }}
+.vp-veh {{ border: 1px solid var(--line); border-left: 3px solid var(--accent); background: var(--surface); padding: 9px 11px; margin-top: .3rem; }}
+.vp-veh b {{ display: block; font: 600 .95rem var(--display); color: var(--ink); }}
+.vp-veh span {{ display: block; font: 500 .78rem var(--display); color: var(--accent); margin-top: 2px; }}
+.vp-veh p {{ margin: 6px 0 0; font-size: .8rem; color: var(--mute); line-height: 1.35; }}
+.vp-gains {{ width: 100%; border-collapse: collapse; font-size: .85rem; margin-top: .4rem; }}
+.vp-gains th, .vp-gains td {{ border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: center; color: var(--ink); }}
+.vp-gains th {{ font: 600 .78rem var(--display); color: var(--mute); }}
+.vp-gains td:first-child, .vp-gains th:first-child {{ text-align: left; }}
+.vp-gains td.hi {{ color: var(--warn); font-weight: 600; }}
+.vp-tiles {{ display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; margin: .2rem 0 1rem; }}
 .vp-tile {{ border: 1px solid var(--line); background: var(--surface); padding: 10px 14px; border-left: 3px solid var(--accent); }}
 .vp-tile span {{ display: block; color: var(--mute); font-size: .78rem; }}
 .vp-tile b {{ font: 600 1.45rem var(--display); color: var(--ink); font-variant-numeric: tabular-nums; }}

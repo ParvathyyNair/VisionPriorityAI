@@ -17,7 +17,9 @@ CLASS_VULNERABILITY = {
 VIEW_NAMES = {
     "CAM_FRONT": "front", "CAM_BACK": "rear",
     "CAM_FRONT_LEFT": "front-left", "CAM_FRONT_RIGHT": "front-right",
+    "CAM_BACK_LEFT": "rear-left", "CAM_BACK_RIGHT": "rear-right",   # heavy-vehicle cameras
 }
+SIDE_VIEWS = {"CAM_FRONT_LEFT", "CAM_FRONT_RIGHT", "CAM_BACK_LEFT", "CAM_BACK_RIGHT"}
 
 def _clamp(x, lo=0.0, hi=1.0):
     return max(lo, min(hi, float(x)))
@@ -51,9 +53,9 @@ def _zone_factor(rec):
     cx = _clamp(float(rec.get("centroid", [(x1+x2)/2, (y1+y2)/2])[0]) / w)
     view = rec.get("view", "")
     # Edge regions are more relevant in the side cameras; centerline is relevant in front/rear.
-    if view == "CAM_FRONT_LEFT":
+    if view in ("CAM_FRONT_LEFT", "CAM_BACK_LEFT"):     # vehicle's own flank is on the image's right
         lateral = 1.0 - _clamp(abs(cx - 0.68) / 0.68)
-    elif view == "CAM_FRONT_RIGHT":
+    elif view in ("CAM_FRONT_RIGHT", "CAM_BACK_RIGHT"):
         lateral = 1.0 - _clamp(abs(cx - 0.32) / 0.68)
     elif view == "CAM_BACK":
         lateral = 1.0 - _clamp(abs(cx - 0.5) / 0.5)
@@ -91,21 +93,29 @@ def _direction_factor(rec):
         toward = vy
     elif view == "CAM_BACK":
         toward = -vy
-    elif view == "CAM_FRONT_LEFT":
+    elif view in ("CAM_FRONT_LEFT", "CAM_BACK_LEFT"):
         toward = 0.65 * vx + 0.35 * vy
-    elif view == "CAM_FRONT_RIGHT":
+    elif view in ("CAM_FRONT_RIGHT", "CAM_BACK_RIGHT"):
         toward = -0.65 * vx + 0.35 * vy
     else:
         toward = 0.0
     # Saturates at ~120 px/s. No motion / insufficient history -> neutral-low score.
     return _clamp(toward / 120.0), vx, vy
 
-def score_track(rec):
-    """Return a copy of a contract record enriched with C/Z/A/D/P and explanation."""
+def score_track(rec, profile=None):
+    """Return a copy of a contract record enriched with C/Z/A/D/P and explanation.
+
+    profile: optional vehicle_profiles.VehicleProfile. Heavy vehicles scale the zone
+    factor Z by a per-camera blind-spot gain; a car (or no profile) is unchanged."""
     out = dict(rec)
     cls = str(rec.get("class", "unknown")).lower()
     C = CLASS_VULNERABILITY.get(cls, 0.45)
     Z, zone = _zone_factor(rec)
+    if profile is not None and getattr(profile, "heavy", False):
+        Z = _clamp(Z * profile.gain(rec.get("view", "")))
+        zone = "critical" if Z >= 0.68 else ("caution" if Z >= 0.38 else "monitoring")
+        if rec.get("view") in SIDE_VIEWS and Z >= 0.6:
+            zone = "blind-spot"
     A, growth = _approach_factor(rec)
     D, vx, vy = _direction_factor(rec)
     age_s = float(rec.get("track_age_s", float(rec.get("track_age", 1)) / 12.0))
@@ -134,8 +144,10 @@ def score_track(rec):
     })
     return out
 
-def score_frame(frame):
-    """Score all current tracks in one JSONL frame and sort most dangerous first."""
-    tracks = [score_track(t) for t in frame.get("tracks", [])]
+def score_frame(frame, profile=None):
+    """Score all current tracks in one JSONL frame and sort most dangerous first.
+    With a vehicle profile, only that vehicle's cameras are scored."""
+    cams = set(profile.cameras) if profile is not None else None
+    tracks = [score_track(t, profile) for t in frame.get("tracks", []) if cams is None or t.get("view") in cams]
     tracks.sort(key=lambda t: t["risk_score"], reverse=True)
     return tracks

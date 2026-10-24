@@ -6,8 +6,29 @@ separate calls.
 """
 from __future__ import annotations
 
+import os
 import time
 from dataclasses import dataclass
+from pathlib import Path
+
+# Offline integration: never let Ultralytics reach the internet (no weight downloads,
+# no pip auto-installs, no update checks). Weights are read from the local models/ folder.
+os.environ.setdefault("YOLO_OFFLINE", "true")
+os.environ.setdefault("YOLO_AUTOINSTALL", "false")
+MODELS_DIR = Path(__file__).resolve().parents[1] / "models"
+
+
+def resolve_weights(name: str) -> str:
+    """Return a local path for the detector weights: an explicit path, or models/<name>.
+    Raises a clear error instead of silently trying to download when offline."""
+    p = Path(name)
+    if p.is_file():
+        return str(p)
+    local = MODELS_DIR / p.name
+    if local.is_file():
+        return str(local)
+    raise FileNotFoundError(f"Detector weights '{name}' not found locally. Expected {local}. "
+                            "Copy the .pt file into the models/ folder (no internet download is attempted).")
 
 import numpy as np
 
@@ -56,7 +77,7 @@ class YoloDetector:
         from ultralytics import YOLO  # imported lazily so the rest of the package works without it
 
         self.cfg = cfg or DetectorConfig()
-        self.model = YOLO(self.cfg.weights)
+        self.model = YOLO(resolve_weights(self.cfg.weights))
         self.names: dict[int, str] = self.model.names
         self.last_ms: float = 0.0
 

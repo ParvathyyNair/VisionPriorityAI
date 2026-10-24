@@ -8,6 +8,8 @@ from pathlib import Path
 
 import streamlit as st
 
+from .fonts import font_face_css
+
 TEMPLATE = Path(__file__).with_name("console.html")
 
 
@@ -18,7 +20,7 @@ def static_video(root: Path, scene: str, src: Path) -> str | None:
             return None
         dst_dir = root / "static"
         dst_dir.mkdir(exist_ok=True)
-        name = f"{scene}_surround_tracks.mp4"
+        name = f"{scene}_{src.name}"   # surround_tracks.mp4 (4 cameras) or surround6_tracks.mp4 (6 cameras)
         dst = dst_dir / name
         if not dst.exists() or dst.stat().st_size != src.stat().st_size:
             shutil.copyfile(src, dst)
@@ -41,7 +43,8 @@ def render_console(payload: dict, root: Path, scene: str, video: Path, height: i
         f"window.__VP_STATIC__={json.dumps(static_name)};"
         f"window.__VP_VIDEO__={json.dumps(data_uri)};"
     )
-    html = TEMPLATE.read_text(encoding="utf-8").replace("/*__PAYLOAD__*/", boot)
+    html = (TEMPLATE.read_text(encoding="utf-8").replace("/*__PAYLOAD__*/", boot)
+            .replace("/*__FONTS__*/", font_face_css()))   # fonts embedded: no internet needed
     if hasattr(st, "iframe"):          # current Streamlit
         st.iframe(html, height=height)
     else:                               # older Streamlit (>=1.35)

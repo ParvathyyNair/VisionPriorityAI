@@ -1,5 +1,8 @@
 [server]
-enableStaticServing = true
+enableStaticServing = true    # serves ./static (scene videos) from this computer
+headless = true
+runOnSave = false
+fileWatcherType = "none"      # offline / in-vehicle: no file-watcher overhead
 
 [theme]
 base = "dark"
@@ -7,4 +10,7 @@ primaryColor = "#1aa6bd"
 font = "sans serif"
 
 [browser]
-gatherUsageStats = false
+gatherUsageStats = false      # no usage telemetry calls
+
+[global]
+developmentMode = false

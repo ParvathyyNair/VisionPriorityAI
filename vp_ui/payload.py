@@ -4,25 +4,26 @@ from __future__ import annotations
 from risk_layer import score_frame
 from .advisory import LEVEL, advise
 
-VIEW_KEYS = ("CAM_FRONT_LEFT", "CAM_FRONT", "CAM_FRONT_RIGHT", "CAM_BACK")
+VIEW_KEYS = ("CAM_FRONT_LEFT", "CAM_FRONT", "CAM_FRONT_RIGHT", "CAM_BACK", "CAM_BACK_LEFT", "CAM_BACK_RIGHT")
 MAX_TRACKS_PER_FRAME = 12
 REARM_FRAMES = 12  # a track must stay out of HIGH for ~1 s before it can raise a new event
 
 
-def build_payload(scene: str, frames: list[dict], fps: float) -> dict:
+def build_payload(scene: str, frames: list[dict], fps: float, profile=None) -> dict:
+    """profile: vehicle_profiles.VehicleProfile (cameras + blind-spot gains + heavy advice); None = car."""
     out_frames: list[dict] = []
     events: list[dict] = []
     last_high: dict[tuple, int] = {}
     prev_high: set[tuple] = set()
 
     for i, frame in enumerate(frames):
-        scored = score_frame(frame)
+        scored = score_frame(frame, profile)
         views: dict[str, list] = {}
         rows = []
         high_now: set[tuple] = set()
         for t in scored:
             lvl = LEVEL.get(t["priority"], 0)
-            tag, msg = advise(t)
+            tag, msg = advise(t, profile)
             key = (t.get("view"), t.get("track_id"))
             v = views.get(t["view"])
             if v is None or t["risk_score"] > v[0]:
@@ -45,12 +46,13 @@ def build_payload(scene: str, frames: list[dict], fps: float) -> dict:
         prev_high = high_now
         out_frames.append({
             "t": round(float(frame.get("timestamp", i / fps)), 3),
-            "n": len(frame.get("tracks", [])),
+            "n": len(scored) if profile is not None else len(frame.get("tracks", [])),
             "m": scored[0]["risk_score"] if scored else 0.0,
             "v": views,
             "k": rows,
             "ms": frame.get("timing_ms", {}).get("total"),
         })
     return {"scene": scene, "fps": fps, "n": len(out_frames), "thr": [0.35, 0.65],
+            "vehicle": profile.to_dict() if profile is not None else None,
             "weights": {"C": 0.25, "Z": 0.20, "A": 0.30, "D": 0.15, "P": 0.10},
             "frames": out_frames, "events": events}

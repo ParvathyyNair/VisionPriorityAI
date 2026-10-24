@@ -17,8 +17,41 @@ def actor(cls: str) -> str:
     return VULNERABLE.get(cls, cls.capitalize() or "Object")
 
 
-def advise(t: dict) -> tuple[str, str]:
-    """Return (short action tag, one-line message) for a scored track."""
+def advise_heavy(t: dict, level: int, who: str, view: str, closing: bool, vehicle: str) -> tuple[str, str] | None:
+    """Advice specific to long vehicles (bus, coach, truck, van): blind spots, turning sweep,
+    reversing and longer stopping distance. Returns None to fall back to the standard advice."""
+    vulnerable = str(t.get("class", "")).lower() in VULNERABLE
+    in_blind = t.get("zone") == "blind-spot"
+    if view == "CAM_BACK_LEFT":
+        if level == 2:
+            return ("BLIND SPOT LEFT", f"{who} in your left blind spot. Do not turn left or move left.")
+        return "WATCH LEFT FLANK", f"{who} alongside on the left. Check the left mirror before turning."
+    if view == "CAM_BACK_RIGHT":
+        if level == 2:
+            return ("BLIND SPOT RIGHT", f"{who} in your right blind spot. Do not change lane right.")
+        return "WATCH RIGHT FLANK", f"{who} alongside on the right. Check the right mirror."
+    if view == "CAM_FRONT":
+        if level == 2 and vulnerable and t.get("zone") in ("critical", "blind-spot"):
+            return "DO NOT MOVE OFF", f"{who} in the blind zone below the windscreen. Wait until clear."
+        if level == 2:
+            return ("BRAKE EARLY", f"{who} closing ahead. A loaded {vehicle} needs longer to stop." if closing
+                    else f"{who} in your forward path. Reduce speed early.")
+        return None
+    if view == "CAM_FRONT_LEFT" and level == 2:
+        return ("NO LEFT TURN", f"{who} on the front-left. The trailer cuts in on a left turn. Wait."
+                if vehicle == "truck" else f"{who} on the front-left. The long body cuts in on a left turn. Wait.")
+    if view == "CAM_FRONT_RIGHT" and level == 2:
+        return "CHECK RIGHT", f"{who} on the front-right. Allow for the wide front swing when turning right."
+    if view == "CAM_BACK":
+        if level == 2:
+            return "DO NOT REVERSE", f"{who} close behind{' in the rear blind spot' if in_blind else ''}. Do not reverse."
+        return "CHECK REAR", f"{who} behind. Use the rear camera before reversing."
+    return None
+
+
+def advise(t: dict, profile=None) -> tuple[str, str]:
+    """Return (short action tag, one-line message) for a scored track.
+    profile: optional vehicle_profiles.VehicleProfile; heavy vehicles get blind-spot advice."""
     level = LEVEL.get(t.get("priority", "LOW"), 0)
     who = actor(t.get("class", "object"))
     view = t.get("view", "")
@@ -26,6 +59,11 @@ def advise(t: dict) -> tuple[str, str]:
 
     if level == 0:
         return "MONITOR", f"{who} in {t.get('view_display', 'view')} zone"
+    if profile is not None and getattr(profile, "heavy", False):
+        vehicle = {"truck": "truck", "bus": "bus", "van": "van"}.get(profile.shape, "vehicle")
+        out = advise_heavy(t, level, who, view, closing, vehicle)
+        if out:
+            return out
 
     if view == "CAM_FRONT":
         if level == 2:
