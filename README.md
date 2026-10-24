@@ -30,6 +30,38 @@
 | `tests/test_perception.py` | Unit tests (no weights or videos needed) |
 | `results/` | Outputs produced for Review 2 (see `docs/HANDOFF.md`) |
 
+
+## Offline mode: works with no internet connection
+
+Everything VisionPriority AI needs runs on the local computer, so a driver in an area with no
+mobile signal gets the same live console, advisories and threat map as one with full connectivity.
+
+| Component | How it works offline |
+|---|---|
+| App server | Streamlit runs locally at `http://localhost:8501`; the browser talks only to this computer |
+| Scene videos | served from this computer (`static/`, `results/nuscenes/*/surround_tracks.mp4`) |
+| Risk scores, advisories, escalation log | computed locally from `results/nuscenes/*/tracks.jsonl` by `risk_layer.py` + `vp_ui/` |
+| Fonts (Chakra Petch, Manrope) | bundled in `assets/fonts/` and embedded in the page (no Google Fonts request) |
+| Detector weights (YOLO11s / YOLO11n) | bundled in `models/`; never downloaded at runtime (`YOLO_OFFLINE=true`) |
+| Alert sound | generated in the browser (Web Audio), no network |
+| Usage telemetry | disabled in `.streamlit/config.toml` |
+
+**Install once with internet:** `pip install -r requirements.txt`
+
+**Install on a laptop with no internet:**
+1. On any computer with internet (same OS and Python version), run `build_offline_installer.bat`
+   (Windows) or `./build_offline_installer.sh`. This downloads every dependency into `wheelhouse/`.
+2. Copy the whole project folder, including `wheelhouse/`, to the offline laptop (USB is fine).
+3. Run `install_offline.bat` or `./install_offline.sh`.
+
+**Run:** double-click `run_offline.bat` (Windows) or run `./run_offline.sh`. It runs a quick offline
+self-check, then opens the dashboard in the browser.
+
+**Prove it at any time:** `python scripts/offline_check.py` blocks all network access and then tests
+every scene in dark and light mode with every alert filter. It also checks that the UI contains no
+internet links, that advisories are generated for every frame, that YOLO11s loads from `models/`,
+and that **0 network connections** are attempted.
+
 ## Setup
 
 ```bash

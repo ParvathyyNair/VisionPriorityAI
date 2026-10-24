@@ -5,6 +5,8 @@ document, so flipping the sidebar switch re-themes both without reloading the vi
 """
 from __future__ import annotations
 
+from .fonts import font_face_css
+
 TOKENS = {
     "dark": dict(bg="#070b0f", surface="#0d1319", surface2="#131b23", line="#22303b", ink="#e3ebf0",
                  mute="#8497a5", accent="#4fd1e8", ok="#3dcb8c", warn="#f2a93b", crit="#ff5a52",
@@ -24,7 +26,7 @@ def shell_css(mode: str) -> str:
     t = TOKENS["light" if mode == "light" else "dark"]
     return f"""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&display=swap');
+{font_face_css()}
 :root {{
   --vp-mode: {mode};
   --bg:{t['bg']}; --surface:{t['surface']}; --surface2:{t['surface2']}; --line:{t['line']};
