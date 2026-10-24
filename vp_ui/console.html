@@ -1,0 +1,469 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #070b0f; --surface: #0d1319; --surface2: #131b23; --line: #22303b;
+  --ink: #e3ebf0; --mute: #8497a5; --accent: #4fd1e8;
+  --ok: #3dcb8c; --warn: #f2a93b; --crit: #ff5a52;
+  --video-bg: #000; --shadow: rgba(0,0,0,.45);
+  --display: "Chakra Petch", "Bahnschrift", "Segoe UI", system-ui, sans-serif;
+  --body: "Manrope", "Segoe UI", system-ui, sans-serif;
+}
+:root[data-mode="light"] {
+  --bg: #e9eef2; --surface: #f6f8fa; --surface2: #ffffff; --line: #c3cfd8;
+  --ink: #0c1820; --mute: #52666f; --accent: #0b7285;
+  --ok: #17855a; --warn: #b8740a; --crit: #d6342c;
+  --video-bg: #0b0f12; --shadow: rgba(20,40,55,.18);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: transparent; color: var(--ink); font-family: var(--body); font-size: 14px; }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.shell { display: grid; grid-template-columns: minmax(0, 1.75fr) minmax(330px, 1fr); gap: 14px; height: 806px; }
+.col { display: flex; flex-direction: column; gap: 14px; min-height: 0; min-width: 0; }
+
+/* chamfered panel: outer element draws the 1px edge, inner element is the surface */
+.panel { --cut: 14px; position: relative; background: var(--line);
+  clip-path: polygon(0 0, calc(100% - var(--cut)) 0, 100% var(--cut), 100% 100%, var(--cut) 100%, 0 calc(100% - var(--cut))); }
+.panel > .in { margin: 1px; background: var(--surface); height: calc(100% - 2px); display: flex; flex-direction: column; min-height: 0;
+  clip-path: polygon(0 0, calc(100% - var(--cut)) 0, 100% var(--cut), 100% 100%, var(--cut) 100%, 0 calc(100% - var(--cut))); }
+.ph { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 16px 8px 14px; border-bottom: 1px solid var(--line); min-height: 38px; }
+.ph h3 { margin: 0; font: 600 13px/1 var(--display); letter-spacing: .02em; color: var(--ink); }
+.ph .sub { color: var(--mute); font-size: 12px; }
+.readouts { display: flex; gap: 16px; flex-wrap: wrap; align-items: baseline; }
+.ro { display: flex; align-items: baseline; gap: 6px; }
+.ro b { font: 600 15px/1 var(--display); font-variant-numeric: tabular-nums; min-width: 2ch; }
+.ro span { color: var(--mute); font-size: 11.5px; }
+
+/* video */
+.vwrap { position: relative; background: var(--video-bg); }
+.vwrap video { display: block; width: 100%; height: auto; max-height: 460px; background: var(--video-bg); }
+.vwrap .corner { position: absolute; width: 16px; height: 16px; border: 2px solid var(--accent); pointer-events: none; opacity: .9; }
+.corner.tl { top: 8px; left: 8px; border-right: 0; border-bottom: 0; }
+.corner.tr { top: 8px; right: 8px; border-left: 0; border-bottom: 0; }
+.corner.bl { bottom: 52px; left: 8px; border-right: 0; border-top: 0; }
+.corner.br { bottom: 52px; right: 8px; border-left: 0; border-top: 0; }
+.vflag { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); padding: 4px 12px; font: 600 12px/1 var(--display);
+  background: color-mix(in srgb, var(--crit) 88%, black); color: #fff; opacity: 0; transition: opacity .12s; pointer-events: none; }
+.vflag.on { opacity: 1; }
+.vmsg { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; text-align: center; padding: 24px; color: #cdd8df; background: rgba(0,0,0,.72); }
+.vmsg.on { display: flex; }
+
+/* timeline */
+.tl-wrap { padding: 10px 14px 12px 14px; }
+.tl { position: relative; height: 74px; cursor: pointer; touch-action: none; }
+.tl canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.tl .head { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--ink); pointer-events: none; transform: translateX(-1px); }
+.tl .head::after { content: ""; position: absolute; top: -2px; left: -4px; width: 10px; height: 6px; background: var(--ink); clip-path: polygon(0 0, 100% 0, 50% 100%); }
+.tl-legend { display: flex; gap: 14px; margin-top: 7px; color: var(--mute); font-size: 11.5px; flex-wrap: wrap; }
+.tl-legend i { display: inline-block; width: 9px; height: 9px; margin-right: 5px; vertical-align: -1px; }
+
+/* advisory banner */
+.banner .in { padding: 0; }
+.bn { display: grid; grid-template-columns: 8px 1fr; min-height: 118px; }
+.bn .bar { background: var(--ok); transition: background .15s; }
+.bn .body { padding: 13px 18px 13px 16px; display: flex; flex-direction: column; gap: 6px; justify-content: center; }
+.bn .lvl { display: flex; align-items: center; gap: 10px; color: var(--mute); font-size: 12px; }
+.bn .lvl b { font: 600 12px/1 var(--display); padding: 3px 8px; color: #fff; background: var(--ok); transition: background .15s; }
+.bn .act { font: 700 28px/1.05 var(--display); letter-spacing: .01em; }
+.bn .msg { font-size: 14.5px; line-height: 1.35; }
+.bn .src { color: var(--mute); font-size: 12px; }
+.banner[data-lvl="1"] .bar, .banner[data-lvl="1"] .lvl b { background: var(--warn); }
+.banner[data-lvl="2"] .bar, .banner[data-lvl="2"] .lvl b { background: var(--crit); }
+.banner[data-lvl="2"] .act { color: var(--crit); }
+.banner[data-lvl="2"] { animation: pulse 1s ease-in-out infinite; }
+@keyframes pulse { 0%,100% { filter: none; } 50% { filter: drop-shadow(0 0 10px color-mix(in srgb, var(--crit) 70%, transparent)); } }
+
+/* radar */
+.radar-wrap { display: flex; flex-direction: column; align-items: center; padding: 6px 14px 10px; }
+.radar-wrap svg { width: 100%; max-width: 380px; height: auto; display: block; }
+.sector { transition: fill .12s, fill-opacity .12s; }
+.fac { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; width: 100%; margin-top: 4px; }
+.fac div { display: flex; flex-direction: column; gap: 3px; }
+.fac label { display: flex; justify-content: space-between; color: var(--mute); font-size: 11.5px; }
+.fac label b { color: var(--ink); font: 600 11.5px/1 var(--display); font-variant-numeric: tabular-nums; }
+.fac .trk { height: 5px; background: var(--line); }
+.fac .trk i { display: block; height: 100%; background: var(--accent); width: 0; }
+
+/* feed */
+.feed { overflow: auto; flex: 1; min-height: 0; padding: 4px 0; }
+.row { display: grid; grid-template-columns: 4px 22px 1fr auto; gap: 10px; padding: 9px 16px 9px 14px; align-items: center; border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent); }
+.row .pb { align-self: stretch; background: var(--ok); }
+.row.l1 .pb { background: var(--warn); } .row.l2 .pb { background: var(--crit); }
+.row .rk { color: var(--mute); font: 500 12px var(--display); text-align: right; }
+.row .t1 { font-weight: 600; font-size: 13px; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.row .t1 em { font-style: normal; color: var(--mute); font-weight: 500; font-size: 12px; }
+.row .t2 { color: var(--mute); font-size: 12.5px; margin-top: 2px; }
+.row .rs { text-align: right; min-width: 52px; }
+.row .rs span { font: 600 15px/1 var(--display); font-variant-numeric: tabular-nums; }
+.row .rs .m { height: 3px; background: var(--line); margin-top: 5px; }
+.row .rs .m i { display: block; height: 100%; background: var(--ok); }
+.row.l1 .rs .m i { background: var(--warn); } .row.l2 .rs .m i { background: var(--crit); }
+.tag { font: 600 10.5px/1 var(--display); padding: 2px 6px; border: 1px solid currentColor; color: var(--mute); }
+.row.l2 .tag { color: var(--crit); } .row.l1 .tag { color: var(--warn); }
+.empty { padding: 26px 18px; color: var(--mute); text-align: center; line-height: 1.5; }
+
+/* log */
+.log { overflow: auto; flex: 1; min-height: 0; }
+.ev { display: grid; grid-template-columns: 62px 112px 1fr; gap: 12px; padding: 8px 16px 8px 14px; border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent); cursor: pointer; align-items: baseline; }
+.ev:hover { background: var(--surface2); }
+.ev .tm { font: 600 12.5px var(--display); font-variant-numeric: tabular-nums; color: var(--crit); }
+.ev .tg { font: 600 11.5px var(--display); }
+.ev .tx { font-size: 12.5px; color: var(--ink); }
+.ev .tx em { font-style: normal; color: var(--mute); }
+
+/* controls */
+.ctl { display: flex; align-items: center; gap: 10px; }
+.seg { display: inline-flex; border: 1px solid var(--line); }
+.seg button { background: transparent; border: 0; padding: 5px 10px; cursor: pointer; font-size: 12px; color: var(--mute); }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--surface); font-weight: 600; }
+.chk { display: inline-flex; align-items: center; gap: 7px; cursor: pointer; font-size: 12px; color: var(--mute); user-select: none; }
+.chk input { accent-color: var(--accent); }
+
+@media (max-width: 920px) {
+  .shell { grid-template-columns: 1fr; height: auto; }
+  .feed, .log { max-height: 320px; }
+  .corner.bl, .corner.br { bottom: 44px; }
+}
+@media (prefers-reduced-motion: reduce) { .banner[data-lvl="2"] { animation: none; } .sector { transition: none; } }
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="col">
+    <section class="panel"><div class="in">
+      <div class="ph">
+        <div class="readouts" aria-live="off">
+          <div class="ro"><b id="rTime">0.00</b><span>seconds</span></div>
+          <div class="ro"><b id="rFrame">0</b><span id="rFrameOf">frame</span></div>
+          <div class="ro"><b id="rTracks">0</b><span>active tracks</span></div>
+          <div class="ro"><b id="rPeak">0.00</b><span>peak risk</span></div>
+          <div class="ro"><b id="rMs">n/a</b><span>ms perception</span></div>
+        </div>
+        <div class="ctl">
+          <div class="seg" role="group" aria-label="Alert filter">
+            <button data-f="0" aria-pressed="true">All</button>
+            <button data-f="1" aria-pressed="false" title="Medium and above">Medium+</button>
+            <button data-f="2" aria-pressed="false" title="High / critical only">High</button>
+          </div>
+          <label class="chk"><input type="checkbox" id="snd" checked>Sound</label>
+        </div>
+      </div>
+      <div class="vwrap">
+        <video id="vid" controls playsinline preload="auto" aria-label="Annotated surround view"></video>
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div class="vflag" id="vflag">CRITICAL</div>
+        <div class="vmsg" id="vmsg"></div>
+      </div>
+      <div class="tl-wrap">
+        <div class="tl" id="tl" role="slider" aria-label="Scene risk timeline" tabindex="0">
+          <canvas id="tlc"></canvas><div class="head" id="head"></div>
+        </div>
+        <div class="tl-legend">
+          <span>Highest risk in each frame. Select a point to jump there.</span>
+          <span><i style="background:var(--ok)"></i>Low</span>
+          <span><i style="background:var(--warn)"></i>Medium</span>
+          <span><i style="background:var(--crit)"></i>High / critical</span>
+        </div>
+      </div>
+    </div></section>
+
+    <section class="panel" style="flex:1;min-height:150px"><div class="in">
+      <div class="ph"><h3>Escalation log</h3><span class="sub" id="logSub">Critical alerts raised so far</span></div>
+      <div class="log" id="log"></div>
+    </div></section>
+  </div>
+
+  <div class="col">
+    <section class="panel banner" id="banner" data-lvl="0"><div class="in">
+      <div class="bn" role="status" aria-live="polite">
+        <div class="bar"></div>
+        <div class="body">
+          <div class="lvl"><b id="bLvl">CLEAR</b><span id="bView">All views</span></div>
+          <div class="act" id="bAct">No hazards</div>
+          <div class="msg" id="bMsg">Press play. Alerts follow the video frame by frame.</div>
+          <div class="src" id="bSrc"></div>
+        </div>
+      </div>
+    </div></section>
+
+    <section class="panel"><div class="in">
+      <div class="ph"><h3>Surround threat map</h3><span class="sub">Top-down, vehicle heading up</span></div>
+      <div class="radar-wrap">
+        <svg id="radar" viewBox="0 0 380 300" role="img" aria-label="Threat level by direction"></svg>
+        <div class="fac" id="fac"></div>
+      </div>
+    </div></section>
+
+    <section class="panel" style="flex:1;min-height:170px"><div class="in">
+      <div class="ph"><h3>Priority feed</h3><span class="sub" id="feedSub"></span></div>
+      <div class="feed" id="feed"></div>
+    </div></section>
+  </div>
+</div>
+
+<script>
+/*__PAYLOAD__*/
+const P = window.__VP_PAYLOAD__;
+const STATIC_NAME = window.__VP_STATIC__;
+const VIDEO_URI = window.__VP_VIDEO__;
+
+const frames = P.frames, N = P.n, FPS = P.fps, DUR = N / FPS;
+const VIEW_LABEL = { CAM_FRONT: "Front", CAM_BACK: "Rear", CAM_FRONT_LEFT: "Front-left", CAM_FRONT_RIGHT: "Front-right" };
+const LVL_NAME = ["Low", "Caution", "Critical"];
+const HOLD = 5; // frames of hysteresis so the banner does not flicker (~0.4 s at 12 fps)
+const $ = (id) => document.getElementById(id);
+const vid = $("vid");
+
+/* ---------- theme: follow the Streamlit shell ---------- */
+let mode = null;
+function readMode() {
+  try {
+    const m = getComputedStyle(window.parent.document.documentElement).getPropertyValue("--vp-mode").trim().replace(/"/g, "");
+    if (m === "light" || m === "dark") return m;
+  } catch (e) {}
+  return window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+}
+function applyMode(m) { mode = m; document.documentElement.setAttribute("data-mode", m); drawTimeline(); }
+
+/* ---------- video source ---------- */
+if (VIDEO_URI) {
+  vid.src = VIDEO_URI;
+} else if (STATIC_NAME) {
+  let base = "/";
+  try { base = window.parent.location.href; } catch (e) {}
+  vid.src = new URL("app/static/" + STATIC_NAME, base).href;
+}
+vid.addEventListener("error", () => {
+  const m = $("vmsg");
+  m.textContent = "The annotated video could not be loaded. Check that results/nuscenes/" + P.scene + "/surround_tracks.mp4 exists and is H.264.";
+  m.classList.add("on");
+});
+
+/* ---------- state ---------- */
+let filter = 0, last = -1, logCount = -1, lastSig = "";
+document.querySelectorAll(".seg button").forEach((b) => b.addEventListener("click", () => {
+  filter = +b.dataset.f;
+  document.querySelectorAll(".seg button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+  lastSig = ""; render(Math.max(last, 0), true);
+}));
+
+/* ---------- audio cue (generated, no asset needed) ---------- */
+let actx = null, lastBeep = -9;
+function beep() {
+  if (!$("snd").checked) return;
+  const now = performance.now() / 1000;
+  if (now - lastBeep < 1.2) return;
+  lastBeep = now;
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === "suspended") actx.resume();
+    [0, 0.16].forEach((d) => {
+      const o = actx.createOscillator(), g = actx.createGain();
+      o.type = "square"; o.frequency.value = 880;
+      g.gain.setValueAtTime(0.0001, actx.currentTime + d);
+      g.gain.exponentialRampToValueAtTime(0.12, actx.currentTime + d + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, actx.currentTime + d + 0.12);
+      o.connect(g).connect(actx.destination);
+      o.start(actx.currentTime + d); o.stop(actx.currentTime + d + 0.13);
+    });
+  } catch (e) {}
+}
+
+/* ---------- radar ---------- */
+const CX = 190, CY = 150, R1 = 58, R2 = 108;
+const SECT = [
+  { key: "CAM_FRONT", label: "Front", a0: -32, a1: 32, la: 0 },
+  { key: "CAM_FRONT_RIGHT", label: "Front-right", a0: 36, a1: 112, la: 74 },
+  { key: "CAM_BACK", label: "Rear", a0: 148, a1: 212, la: 180 },
+  { key: "CAM_FRONT_LEFT", label: "Front-left", a0: -112, a1: -36, la: -74 },
+];
+const pol = (r, a) => { const t = (a - 90) * Math.PI / 180; return [CX + r * Math.cos(t), CY + r * Math.sin(t)]; };
+function wedge(a0, a1) {
+  const [x1, y1] = pol(R2, a0), [x2, y2] = pol(R2, a1), [x3, y3] = pol(R1, a1), [x4, y4] = pol(R1, a0);
+  const big = (a1 - a0) > 180 ? 1 : 0;
+  return `M${x1},${y1} A${R2},${R2} 0 ${big} 1 ${x2},${y2} L${x3},${y3} A${R1},${R1} 0 ${big} 0 ${x4},${y4} Z`;
+}
+(function buildRadar() {
+  let s = "";
+  [R1, (R1 + R2) / 2, R2].forEach((r) => { s += `<circle cx="${CX}" cy="${CY}" r="${r}" fill="none" stroke="var(--line)" stroke-width="1" stroke-dasharray="${r === R2 ? "" : "2 4"}"/>`; });
+  for (let a = 30; a < 360; a += 30) { if (a === 180) continue; const [x1, y1] = pol(R2 + 3, a), [x2, y2] = pol(R2 + 9, a); s += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="var(--line)"/>`; }
+  SECT.forEach((c) => {
+    s += `<path id="sc_${c.key}" class="sector" d="${wedge(c.a0, c.a1)}" fill="var(--line)" fill-opacity=".35" stroke="var(--line)"/>`;
+    let lx, ly, anchor;
+    if (c.key === "CAM_FRONT") { lx = CX; ly = CY - R2 - 26; anchor = "middle"; }
+    else if (c.key === "CAM_BACK") { lx = CX; ly = CY + R2 + 22; anchor = "middle"; }
+    else if (c.key === "CAM_FRONT_RIGHT") { lx = CX + R2 + 12; ly = CY - 34; anchor = "start"; }
+    else { lx = CX - R2 - 12; ly = CY - 34; anchor = "end"; }
+    s += `<text x="${lx}" y="${ly}" text-anchor="${anchor}" fill="var(--mute)" font-size="11.5" font-family="var(--body)">${c.label}</text>`;
+    s += `<text id="sv_${c.key}" x="${lx}" y="${ly + 16}" text-anchor="${anchor}" fill="var(--ink)" font-size="15" font-weight="600" font-family="var(--display)">--</text>`;
+  });
+  s += `<g transform="translate(${CX},${CY})"><path d="M-17,-34 Q0,-46 17,-34 L19,28 Q19,38 9,38 L-9,38 Q-19,38 -19,28 Z" fill="var(--surface2)" stroke="var(--ink)" stroke-width="1.5"/>
+        <path d="M-12,-22 Q0,-30 12,-22 L11,-8 L-11,-8 Z" fill="var(--line)"/><path d="M-11,18 L11,18 L10,28 L-10,28 Z" fill="var(--line)"/></g>`;
+  $("radar").innerHTML = s;
+  $("fac").innerHTML = ["C|Class", "Z|Zone", "A|Approach", "D|Direction", "P|Persistence"].map((x) => {
+    const [k, n] = x.split("|");
+    return `<div><label><span title="${n}">${k}</span><b id="fv_${k}">0.00</b></label><div class="trk"><i id="fb_${k}"></i></div></div>`;
+  }).join("");
+})();
+const lvlColor = (l) => l === 2 ? "var(--crit)" : l === 1 ? "var(--warn)" : "var(--ok)";
+
+/* ---------- timeline ---------- */
+const tl = $("tl"), tlc = $("tlc"), head = $("head");
+const riskLvl = (r) => r >= P.thr[1] ? 2 : r >= P.thr[0] ? 1 : 0;
+function cssVar(n) { return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+function drawTimeline() {
+  const dpr = window.devicePixelRatio || 1, w = tl.clientWidth, h = tl.clientHeight;
+  if (!w) return;
+  tlc.width = w * dpr; tlc.height = h * dpr;
+  const g = tlc.getContext("2d"); g.scale(dpr, dpr); g.clearRect(0, 0, w, h);
+  const cols = [cssVar("--ok"), cssVar("--warn"), cssVar("--crit")], line = cssVar("--line");
+  g.strokeStyle = line; g.lineWidth = 1; g.setLineDash([3, 4]);
+  P.thr.forEach((t) => { const y = Math.round(h - t * h) + .5; g.beginPath(); g.moveTo(0, y); g.lineTo(w, y); g.stroke(); });
+  g.setLineDash([]);
+  const bw = w / N, played = Math.max(last, 0);
+  for (let i = 0; i < N; i++) {
+    const r = frames[i].m, l = riskLvl(r), bh = Math.max(2, r * (h - 2));
+    g.globalAlpha = i <= played ? 1 : 0.42;
+    g.fillStyle = cols[l];
+    g.fillRect(i * bw, h - bh, Math.max(1, bw - 0.6), bh);
+  }
+  g.globalAlpha = 1;
+  g.fillStyle = line; g.fillRect(0, h - 1, w, 1);
+}
+function seekFromEvent(e) {
+  const r = tl.getBoundingClientRect();
+  const x = Math.min(Math.max(e.clientX - r.left, 0), r.width);
+  vid.currentTime = (x / r.width) * DUR;
+  onTime(vid.currentTime);
+}
+let dragging = false;
+tl.addEventListener("pointerdown", (e) => { dragging = true; tl.setPointerCapture(e.pointerId); seekFromEvent(e); });
+tl.addEventListener("pointermove", (e) => { if (dragging) seekFromEvent(e); });
+tl.addEventListener("pointerup", () => { dragging = false; });
+tl.addEventListener("keydown", (e) => {
+  if (e.key === "ArrowRight") vid.currentTime = Math.min(DUR, vid.currentTime + 1 / FPS * 6);
+  if (e.key === "ArrowLeft") vid.currentTime = Math.max(0, vid.currentTime - 1 / FPS * 6);
+});
+window.addEventListener("resize", drawTimeline);
+
+/* ---------- rendering ---------- */
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const passes = (row) => row[4] >= filter;
+
+function subjectFor(idx) {
+  // Highest level, then highest risk, over a short trailing window (hysteresis).
+  let best = null;
+  for (let i = Math.max(0, idx - HOLD); i <= idx; i++) {
+    const k = frames[i].k;
+    if (k.length && (!best || k[0][4] > best[4] || (k[0][4] === best[4] && k[0][3] > best[3]))) best = k[0];
+  }
+  return best;
+}
+function viewMax(idx) {
+  const out = {};
+  for (let i = Math.max(0, idx - HOLD); i <= idx; i++) {
+    const v = frames[i].v;
+    for (const key in v) if (!out[key] || v[key][0] > out[key][0]) out[key] = v[key];
+  }
+  return out;
+}
+
+function render(idx, force) {
+  if (idx === last && !force) return;
+  const prev = last; last = idx;
+  const f = frames[idx];
+
+  $("rTime").textContent = f.t.toFixed(2);
+  $("rFrame").textContent = idx;
+  $("rFrameOf").textContent = "of " + (N - 1) + " frames";
+  $("rTracks").textContent = f.n;
+  $("rPeak").textContent = f.m.toFixed(2);
+  $("rMs").textContent = f.ms == null ? "n/a" : Math.round(f.ms);
+  head.style.left = (idx / Math.max(N - 1, 1)) * 100 + "%";
+
+  // banner
+  const s = subjectFor(idx);
+  const ban = $("banner");
+  const lvl = s ? s[4] : 0;
+  ban.dataset.lvl = lvl;
+  $("bLvl").textContent = s ? (lvl === 2 ? "CRITICAL" : lvl === 1 ? "CAUTION" : "LOW") : "CLEAR";
+  $("bView").textContent = s ? VIEW_LABEL[s[1]] || s[1] : "All views";
+  $("bAct").textContent = s ? (lvl === 0 ? "Monitoring" : s[5]) : "No hazards";
+  $("bMsg").textContent = s ? s[6] : "No tracked objects in any camera.";
+  $("bSrc").textContent = s ? `${s[0]}  |  ${s[2]}  |  risk ${s[3].toFixed(2)}  |  image zone: ${s[9]}` : "";
+  $("vflag").classList.toggle("on", lvl === 2);
+  $("vflag").textContent = s && lvl === 2 ? s[5] : "";
+
+  // radar
+  const vm = viewMax(idx);
+  SECT.forEach((c) => {
+    const el = $("sc_" + c.key), v = vm[c.key], t = $("sv_" + c.key);
+    if (!v) { el.setAttribute("fill", "var(--line)"); el.setAttribute("fill-opacity", ".35"); t.textContent = "--"; return; }
+    el.setAttribute("fill", lvlColor(v[1])); el.setAttribute("fill-opacity", (0.2 + 0.75 * v[0]).toFixed(2));
+    t.textContent = v[0].toFixed(2);
+  });
+  // factors for the subject track
+  ["C", "Z", "A", "D", "P"].forEach((k, i) => {
+    const val = s ? s[7][i] : 0;
+    $("fv_" + k).textContent = val.toFixed(2); $("fb_" + k).style.width = (val * 100).toFixed(0) + "%";
+  });
+
+  // feed
+  const rows = f.k.filter(passes).slice(0, 8);
+  const sig = idx + "|" + filter + "|" + rows.map((r) => r[0] + r[3]).join(",");
+  if (sig !== lastSig) {
+    lastSig = sig;
+    $("feedSub").textContent = rows.length ? `${rows.length} shown of ${f.n} tracked` : "";
+    $("feed").innerHTML = rows.length ? rows.map((r, i) => `
+      <div class="row l${r[4]}"><div class="pb"></div><div class="rk">${i + 1}</div>
+        <div><div class="t1">${esc(r[0])}<em>${esc(r[2])}, ${esc(VIEW_LABEL[r[1]] || r[1])}</em>${r[4] ? `<span class="tag">${esc(r[5])}</span>` : ""}</div>
+        <div class="t2">${esc(r[6])}</div></div>
+        <div class="rs"><span>${r[3].toFixed(2)}</span><div class="m"><i style="width:${(r[3] * 100).toFixed(0)}%"></i></div></div>
+      </div>`).join("")
+      : `<div class="empty">${f.n ? "Nothing at this priority right now. Tracked objects are below the filter." : "No objects tracked in this frame."}</div>`;
+  }
+
+  // escalation log (cumulative up to the current frame, so seeking works)
+  let cnt = 0; while (cnt < P.events.length && P.events[cnt].f <= idx) cnt++;
+  if (cnt !== logCount) {
+    logCount = cnt;
+    const shown = P.events.slice(0, cnt).reverse();
+    $("logSub").textContent = cnt ? `${cnt} critical alert${cnt === 1 ? "" : "s"} so far` : "Critical alerts raised so far";
+    $("log").innerHTML = shown.length ? shown.map((e) => `
+      <div class="ev" data-t="${e.t}"><span class="tm">${e.t.toFixed(2)} s</span><span class="tg">${esc(e.tag)}</span>
+      <span class="tx">${esc(e.msg)} <em>${esc(e.id)}, ${esc(VIEW_LABEL[e.view] || e.view)}, risk ${e.risk.toFixed(2)}</em></span></div>`).join("")
+      : `<div class="empty">No critical alerts yet. Play the clip to see them appear as they happen.</div>`;
+    document.querySelectorAll(".ev").forEach((el) => el.addEventListener("click", () => { vid.currentTime = Math.max(0, +el.dataset.t - 0.5); onTime(vid.currentTime); }));
+  }
+
+  // audio cue when a new critical alert has just been raised during playback
+  if (!vid.paused && prev >= 0 && idx > prev && idx - prev <= 3) {
+    if (P.events.some((e) => e.f > prev && e.f <= idx)) beep();
+  }
+  drawTimeline();
+}
+
+function onTime(t) { render(Math.min(N - 1, Math.max(0, Math.round(t * FPS)))); }
+if (vid.requestVideoFrameCallback) {
+  const cb = (now, meta) => { onTime(meta.mediaTime); vid.requestVideoFrameCallback(cb); };
+  vid.requestVideoFrameCallback(cb);
+} else {
+  const tick = () => { onTime(vid.currentTime); requestAnimationFrame(tick); };
+  requestAnimationFrame(tick);
+}
+["seeked", "seeking", "timeupdate", "pause", "loadeddata"].forEach((ev) => vid.addEventListener(ev, () => onTime(vid.currentTime)));
+applyMode(readMode());
+setInterval(() => { const m = readMode(); if (m !== mode) applyMode(m); }, 350);
+render(0, true);
+</script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+[server]
+enableStaticServing = true
+
+[theme]
+base = "dark"
+primaryColor = "#1aa6bd"
+font = "sans serif"
+
+[browser]
+gatherUsageStats = false
