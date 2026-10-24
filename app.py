@@ -152,6 +152,34 @@ with tab_live:
         render_console(payload, ROOT, scene, video)
         st.caption("Press play. The advisory banner, threat map, priority feed and escalation log update on every video frame. "
                    "Select any point on the timeline, or any log entry, to jump to that moment.")
+            # ----------------------------------------------------
+        # Driver drowsiness videos
+    # ----------------------------------------------------
+        st.markdown("---")
+        st.subheader("Driver Drowsiness Monitoring")
+
+        drowsiness_dir = ROOT / "results" / "drowsiness"
+
+        video_files = sorted(
+            p for p in drowsiness_dir.glob("*")
+            if p.is_file()
+            and p.suffix.lower() in {".mp4", ".mov", ".avi", ".mkv"}
+        ) if drowsiness_dir.exists() else []
+
+        if video_files:
+            selected_video = st.selectbox(
+                "Select a driver video",
+                video_files,
+                format_func=lambda p: p.name,
+                key="drowsiness_video_select"
+            )
+
+            st.video(str(selected_video))
+        else:
+            st.info(
+                "No drowsiness videos found. "
+                "Add MP4 files to results/drowsiness."
+            )
 
 # ---------------------------------------------------------------- frame inspector
 with tab_inspect:
