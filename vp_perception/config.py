@@ -18,12 +18,16 @@ VIEW_NAMES = {
     "CAM_BACK": "rear",
     "CAM_FRONT_LEFT": "front_left",
     "CAM_FRONT_RIGHT": "front_right",
+    "CAM_BACK_LEFT": "rear_left",      # heavy-vehicle profiles add the two rear-side cameras
+    "CAM_BACK_RIGHT": "rear_right",
 }
 VIEW_PREFIX = {
     "CAM_FRONT": "F",
     "CAM_BACK": "B",
     "CAM_FRONT_LEFT": "FL",
     "CAM_FRONT_RIGHT": "FR",
+    "CAM_BACK_LEFT": "RL",
+    "CAM_BACK_RIGHT": "RR",
 }
 
 # --------------------------------------------------------------------------

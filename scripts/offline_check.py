@@ -72,7 +72,9 @@ def main():
     scenes = sorted(p.name for p in RESULTS.glob("scene*") if (p / "tracks.jsonl").exists())
     check("recorded scenes", scenes, ", ".join(scenes))
     for sc in scenes:
-        check(f"{sc}: annotated surround video", (RESULTS / sc / "surround_tracks.mp4").exists())
+        check(f"{sc}: 4-camera video", (RESULTS / sc / "surround_tracks.mp4").exists())
+        check(f"{sc}: 6-camera heavy-vehicle video + rear-side tracks",
+              (RESULTS / sc / "surround6_tracks.mp4").exists() and (RESULTS / sc / "tracks_rear_sides.jsonl").exists())
     fonts = sorted(p.name for p in (ROOT / "assets" / "fonts").glob("*.woff2"))
     check("UI fonts bundled (Chakra Petch + Manrope)", len(fonts) >= 8, f"{len(fonts)} font files")
     check("YOLO11s weights (models/yolo11s.pt)", (ROOT / "models" / "yolo11s.pt").exists())
@@ -91,33 +93,39 @@ def main():
         check(f"{name}: no external URLs", not links, ", ".join(links[:3]))
         check(f"{name}: fonts embedded", "data:font/woff2;base64" in html)
 
-    print("\n3. Full app (app.py), every scene, dark + light, every alert filter")
+    print("\n3. Full app (app.py), every scene and vehicle type, dark + light, every alert filter")
     from streamlit.testing.v1 import AppTest
+    import vehicle_profiles as vp
     filters = ["All", "Medium and above", "High / critical only"]
     for sc in (scenes[:1] if a.quick else scenes):
-        for light in ((False,) if a.quick else (False, True)):
-            for flt in (filters[:1] if a.quick else filters):
+        for vkey in (("car", "truck") if a.quick else tuple(vp.PROFILES)):
+          for light in ((False,) if a.quick else (False, True)):
+            for flt in (filters[:1] if a.quick else (filters if vkey in ("car", "truck") else filters[:1])):
                 with _Quiet():
                     at = AppTest.from_file(str(ROOT / "app.py"), default_timeout=180)
                     at.run()
                     at.sidebar.selectbox[0].set_value(sc)
+                    [x for x in at.sidebar.selectbox if x.label == "Vehicle type"][0].set_value(vkey)
                     if light:
                         at.sidebar.toggle[0].set_value(True)
                     at.run()
                     sb = [s for s in at.selectbox if s.label == "Show alerts"]
                     if sb:
                         sb[0].set_value(flt); at.run()
-                check(f"{sc} · {'light' if light else 'dark'} · '{flt}'", not at.exception,
+                check(f"{sc} · {vkey} · {'light' if light else 'dark'} · '{flt}'", not at.exception,
                       ("error: " + at.exception[0].value) if at.exception else f"rendered, {len(at.markdown)} panels")
 
-    print("\n4. Driver advisories generated frame by frame")
+    print("\n4. Driver advisories generated frame by frame (car and truck)")
     from vp_ui.payload import build_payload
     for sc in scenes:
-        frames = [json.loads(l) for l in open(RESULTS / sc / "tracks.jsonl", encoding="utf-8") if l.strip()]
-        t0 = time.perf_counter(); p = build_payload(sc, frames, 12.0); ms = (time.perf_counter() - t0) / len(frames) * 1000
-        tags = {r[5] for f in p["frames"] for r in f["k"]}
-        check(f"{sc}: {p['n']} frames with alerts", p["n"] == len(frames) and sum(len(f["k"]) for f in p["frames"]) > 0,
-              f"{len(p['events'])} critical escalations, advice: {', '.join(sorted(tags)[:5])}…, {ms:.1f} ms/frame")
+        base = [json.loads(l) for l in open(RESULTS / sc / "tracks.jsonl", encoding="utf-8") if l.strip()]
+        side = [json.loads(l) for l in open(RESULTS / sc / "tracks_rear_sides.jsonl", encoding="utf-8") if l.strip()]
+        six = [{**b, "tracks": b["tracks"] + x["tracks"]} for b, x in zip(base, side)]
+        for vkey, frames in (("car", base), ("truck", six)):
+            t0 = time.perf_counter(); p = build_payload(sc, frames, 12.0, vp.PROFILES[vkey]); ms = (time.perf_counter() - t0) / len(frames) * 1000
+            tags = {r[5] for f in p["frames"] for r in f["k"] if r[4]}
+            check(f"{sc} · {vkey}: {p['n']} frames with alerts", p["n"] == len(frames) and sum(len(f["k"]) for f in p["frames"]) > 0,
+                  f"{len(p['events'])} critical escalations, advice: {', '.join(sorted(tags))}, {ms:.1f} ms/frame")
 
     if not a.quick:
         print("\n5. YOLO11s + ByteTrack from local weights")

@@ -20,7 +20,7 @@ def static_video(root: Path, scene: str, src: Path) -> str | None:
             return None
         dst_dir = root / "static"
         dst_dir.mkdir(exist_ok=True)
-        name = f"{scene}_surround_tracks.mp4"
+        name = f"{scene}_{src.name}"   # surround_tracks.mp4 (4 cameras) or surround6_tracks.mp4 (6 cameras)
         dst = dst_dir / name
         if not dst.exists() or dst.stat().st_size != src.stat().st_size:
             shutil.copyfile(src, dst)
